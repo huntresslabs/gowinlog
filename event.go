@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package winlog
@@ -9,11 +10,14 @@ import (
 	"unsafe"
 )
 
+type evtCbFunction func(Action uint32, Context uintptr, handle syscall.Handle) uintptr
+
 /*Functionality related to events and listening to the event log*/
 
 // Get a handle to a render context which will render properties from the System element.
-//    Wraps EvtCreateRenderContext() with Flags = EvtRenderContextSystem. The resulting
-//    handle must be closed with CloseEventHandle.
+//
+//	Wraps EvtCreateRenderContext() with Flags = EvtRenderContextSystem. The resulting
+//	handle must be closed with CloseEventHandle.
 func GetSystemRenderContext() (SysRenderContext, error) {
 	context, err := EvtCreateRenderContext(0, 0, EvtRenderContextSystem)
 	if err != nil {
@@ -22,9 +26,11 @@ func GetSystemRenderContext() (SysRenderContext, error) {
 	return SysRenderContext(context), nil
 }
 
-/* Get a handle for a event log subscription on the given channel.
-   `query` is an XPath expression to filter the events on the channel - "*" allows all events.
-   The resulting handle must be closed with CloseEventHandle. */
+/*
+	 Get a handle for a event log subscription on the given channel.
+	   `query` is an XPath expression to filter the events on the channel - "*" allows all events.
+		The resulting handle must be closed with CloseEventHandle.
+*/
 func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher *LogEventCallbackWrapper) (ListenerHandle, error) {
 	wideChan, err := syscall.UTF16PtrFromString(channel)
 	if err != nil {
@@ -34,17 +40,20 @@ func CreateListener(channel, query string, startpos EVT_SUBSCRIBE_FLAGS, watcher
 	if err != nil {
 		return 0, err
 	}
-	listenerHandle, err := EvtSubscribe(0, 0, wideChan, wideQuery, 0, uintptr(unsafe.Pointer(watcher)), uintptr(syscall.NewCallback(eventCallback)), uint32(startpos))
+	listenerHandle, err := EvtSubscribe(0, 0, wideChan, wideQuery, 0, uintptr(0), syscall.NewCallback(newEventCallback(watcher)), uint32(startpos))
 	if err != nil {
 		return 0, err
 	}
 	return ListenerHandle(listenerHandle), nil
 }
 
-/* Get a handle for an event log subscription on the given channel. Will begin at the
-   bookmarked event, or the closest possible event if the log has been truncated.
-   `query` is an XPath expression to filter the events on the channel - "*" allows all events.
-   The resulting handle must be closed with CloseEventHandle. */
+/*
+Get a handle for an event log subscription on the given channel. Will begin at the
+
+	bookmarked event, or the closest possible event if the log has been truncated.
+	`query` is an XPath expression to filter the events on the channel - "*" allows all events.
+	The resulting handle must be closed with CloseEventHandle.
+*/
 func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallbackWrapper, bookmarkHandle BookmarkHandle) (ListenerHandle, error) {
 	wideChan, err := syscall.UTF16PtrFromString(channel)
 	if err != nil {
@@ -54,7 +63,7 @@ func CreateListenerFromBookmark(channel, query string, watcher *LogEventCallback
 	if err != nil {
 		return 0, err
 	}
-	listenerHandle, err := EvtSubscribe(0, 0, wideChan, wideQuery, syscall.Handle(bookmarkHandle), uintptr(unsafe.Pointer(watcher)), syscall.NewCallback(eventCallback), uint32(EvtSubscribeStartAfterBookmark))
+	listenerHandle, err := EvtSubscribe(0, 0, wideChan, wideQuery, syscall.Handle(bookmarkHandle), uintptr(0), syscall.NewCallback(newEventCallback(watcher)), uint32(EvtSubscribeStartAfterBookmark))
 	if err != nil {
 		return 0, err
 	}
@@ -84,9 +93,12 @@ func GetLastError() error {
 	return syscall.GetLastError()
 }
 
-/* Render the system properties from the event and returns an array of properties.
-   Properties can be accessed using RenderStringField, RenderIntField, RenderFileTimeField,
-   or RenderUIntField depending on type. This buffer must be freed after use. */
+/*
+Render the system properties from the event and returns an array of properties.
+
+	Properties can be accessed using RenderStringField, RenderIntField, RenderFileTimeField,
+	or RenderUIntField depending on type. This buffer must be freed after use.
+*/
 func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) (EvtVariant, error) {
 	var bufferUsed uint32 = 0
 	var propertyCount uint32 = 0
@@ -178,14 +190,16 @@ func getTestEventHandle() (EventHandle, error) {
 	return EventHandle(record), nil
 }
 
-func eventCallback(Action uint32, Context unsafe.Pointer, handle syscall.Handle) uintptr {
-	cbWrap := (*LogEventCallbackWrapper)(Context)
-	if Action == 0 {
-		cbWrap.callback.PublishError(fmt.Errorf("Event log callback got error: %v", GetLastError()))
-	} else {
-		cbWrap.callback.PublishEvent(EventHandle(handle), cbWrap.subscribedChannel)
+// newEventCallback captures the context for use in the callback
+func newEventCallback(context *LogEventCallbackWrapper) evtCbFunction {
+	return func(Action uint32, _ uintptr, handle syscall.Handle) uintptr {
+		if Action == 0 {
+			context.callback.PublishError(fmt.Errorf("Event log callback got error: %v", GetLastError()))
+		} else {
+			context.callback.PublishEvent(EventHandle(handle), context.subscribedChannel)
+		}
+		return 0
 	}
-	return 0
 }
 
 // CreateMap converts the WinLogEvent to a map[string]interface{}
