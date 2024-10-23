@@ -203,4 +203,10 @@ func TestRemoveZeroBytes(t *T) {
 	testCase4 := []byte{1, 2, 3, 0}
 	removeZeroBytes(&testCase4)
 	testEq(testCase4, []byte{1, 2, 3})
+
+	var testCase5 []byte
+	removeZeroBytes(&testCase5)
+	testEq(testCase5, nil)
+
+	removeZeroBytes(nil)
 }
