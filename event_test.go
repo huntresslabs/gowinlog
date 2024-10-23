@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package winlog
@@ -171,4 +172,35 @@ func BenchmarkAPIDecode(b *B) {
 			b.Fatal(err)
 		}
 	}
+}
+
+func TestRemoveZeroBytes(t *T) {
+	testEq := func(a, b []byte) {
+		if len(a) != len(b) {
+			t.Fatalf("%v does not equal %v", a, b)
+			return
+		}
+		for index := range a {
+			if a[index] != b[index] {
+				t.Fatalf("%v does not equal %v", a, b)
+				return
+			}
+		}
+	}
+
+	testCase1 := []byte{0, 0, 1, 2, 3}
+	removeZeroBytes(&testCase1)
+	testEq(testCase1, []byte{1, 2, 3})
+
+	testCase2 := []byte{0, 0}
+	removeZeroBytes(&testCase2)
+	testEq(testCase2, []byte{})
+
+	testCase3 := []byte{}
+	removeZeroBytes(&testCase3)
+	testEq(testCase3, []byte{})
+
+	testCase4 := []byte{1, 2, 3, 0}
+	removeZeroBytes(&testCase4)
+	testEq(testCase4, []byte{1, 2, 3})
 }

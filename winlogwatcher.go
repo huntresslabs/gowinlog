@@ -1,6 +1,7 @@
+//go:build windows
 // +build windows
 
-//Winlog hooks into the Windows Event Log and streams events through channels
+// Winlog hooks into the Windows Event Log and streams events through channels
 package winlog
 
 import (
@@ -27,19 +28,11 @@ func NewWinLogWatcher() (*WinLogWatcher, error) {
 		return nil, err
 	}
 	return &WinLogWatcher{
-		shutdown:       make(chan interface{}),
-		errChan:        make(chan error),
-		eventChan:      make(chan *WinLogEvent),
-		renderContext:  cHandle,
-		watches:        make(map[string]*channelWatcher),
-		RenderKeywords: true,
-		RenderMessage:  true,
-		RenderLevel:    true,
-		RenderTask:     true,
-		RenderProvider: true,
-		RenderOpcode:   true,
-		RenderChannel:  true,
-		RenderId:       true,
+		shutdown:      make(chan interface{}),
+		errChan:       make(chan error),
+		eventChan:     make(chan *WinLogEvent),
+		renderContext: cHandle,
+		watches:       make(map[string]*channelWatcher),
 	}, nil
 }
 
@@ -215,10 +208,10 @@ func (self *WinLogWatcher) convertEvent(handle EventHandle, subscribedChannel st
 			if self.RenderId {
 				idText, _ = FormatMessage(publisherHandle, handle, EvtFormatMessageId)
 			}
+
+			CloseEventHandle(uint64(publisherHandle))
 		}
 	}
-
-	CloseEventHandle(uint64(publisherHandle))
 
 	event := WinLogEvent{
 		Xml:               xml,

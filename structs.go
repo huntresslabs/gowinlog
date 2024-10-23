@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package winlog
@@ -10,7 +11,7 @@ import (
 // Stores the common fields from a log event
 type WinLogEvent struct {
 	// XML
-	Xml    string
+	Xml    []byte
 	XmlErr error
 
 	// From EvtRender

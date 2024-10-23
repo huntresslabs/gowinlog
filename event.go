@@ -4,7 +4,6 @@
 package winlog
 
 import (
-	"bytes"
 	"fmt"
 	"syscall"
 	"unsafe"
@@ -116,13 +115,13 @@ func RenderEventValues(renderContext SysRenderContext, eventHandle EventHandle) 
 }
 
 // Render the event as XML.
-func RenderEventXML(eventHandle EventHandle) (string, error) {
+func RenderEventXML(eventHandle EventHandle) ([]byte, error) {
 	var bufferUsed, propertyCount uint32
 
 	err := EvtRender(0, syscall.Handle(eventHandle), EvtRenderEventXml, 0, nil, &bufferUsed, &propertyCount)
 
 	if bufferUsed == 0 {
-		return "", err
+		return nil, err
 	}
 
 	buffer := make([]byte, bufferUsed)
@@ -130,13 +129,12 @@ func RenderEventXML(eventHandle EventHandle) (string, error) {
 
 	err = EvtRender(0, syscall.Handle(eventHandle), EvtRenderEventXml, bufSize, (*uint16)(unsafe.Pointer(&buffer[0])), &bufferUsed, &propertyCount)
 	if err != nil {
-		return err.Error(), err
+		return nil, err
 	}
 
-	// Remove null bytes
-	xml := bytes.Replace(buffer, []byte("\x00"), []byte{}, -1)
+	removeZeroBytes(&buffer)
 
-	return string(xml), nil
+	return buffer, nil
 }
 
 /* Get a handle that represents the publisher of the event, given the rendered event values. */
@@ -231,4 +229,20 @@ func (ev *WinLogEvent) CreateMap() map[string]interface{} {
 	toReturn["SubscribedChannel"] = ev.SubscribedChannel
 	toReturn["Bookmark"] = ev.Bookmark
 	return toReturn
+}
+
+// Removes null bytes in place
+func removeZeroBytes(buffer *[]byte) {
+	if buffer == nil {
+		return
+	}
+	var read, write int
+	for ; read < len(*buffer); read++ {
+		if (*buffer)[read] == 0 {
+			continue
+		}
+		(*buffer)[write] = (*buffer)[read]
+		write++
+	}
+	*buffer = (*buffer)[:write]
 }
