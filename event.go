@@ -124,17 +124,15 @@ func RenderEventXML(eventHandle EventHandle) ([]byte, error) {
 		return nil, err
 	}
 
-	buffer := make([]byte, bufferUsed)
+	buffer := make([]uint16, bufferUsed)
 	bufSize := bufferUsed
 
-	err = EvtRender(0, syscall.Handle(eventHandle), EvtRenderEventXml, bufSize, (*uint16)(unsafe.Pointer(&buffer[0])), &bufferUsed, &propertyCount)
+	err = EvtRender(0, syscall.Handle(eventHandle), EvtRenderEventXml, bufSize, &buffer[0], &bufferUsed, &propertyCount)
 	if err != nil {
 		return nil, err
 	}
 
-	removeZeroBytes(&buffer)
-
-	return buffer, nil
+	return []byte(syscall.UTF16ToString(buffer)), nil
 }
 
 /* Get a handle that represents the publisher of the event, given the rendered event values. */
@@ -229,20 +227,4 @@ func (ev *WinLogEvent) CreateMap() map[string]interface{} {
 	toReturn["SubscribedChannel"] = ev.SubscribedChannel
 	toReturn["Bookmark"] = ev.Bookmark
 	return toReturn
-}
-
-// Removes null bytes in place
-func removeZeroBytes(buffer *[]byte) {
-	if buffer == nil {
-		return
-	}
-	var read, write int
-	for ; read < len(*buffer); read++ {
-		if (*buffer)[read] == 0 {
-			continue
-		}
-		(*buffer)[write] = (*buffer)[read]
-		write++
-	}
-	*buffer = (*buffer)[:write]
 }
