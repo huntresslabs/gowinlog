@@ -62,6 +62,13 @@ const (
 	EvtSubscribeStartAfterBookmark
 )
 
+type EVT_SUBSCRIBE_NOTIFY_ACTION int
+
+const (
+	EvtSubscribeActionError = iota
+	EvtSubscribeActionDeliver
+)
+
 /* Fields that can be rendered with GetRendered*Value */
 type EVT_SYSTEM_PROPERTY_ID int
 

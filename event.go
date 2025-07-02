@@ -188,9 +188,13 @@ func getTestEventHandle() (EventHandle, error) {
 
 // newEventCallback captures the context for use in the callback
 func newEventCallback(context *LogEventCallbackWrapper) evtCbFunction {
-	return func(Action uint32, _ uintptr, handle syscall.Handle) uintptr {
-		if Action == 0 {
-			context.callback.PublishError(fmt.Errorf("Event log callback got error: %v", GetLastError()))
+	return func(action uint32, _ uintptr, handle syscall.Handle) uintptr {
+		if action == EvtSubscribeActionError {
+			// When the callback is called for an error, the error code is
+			// passed in the event handle parameter. See
+			// https://learn.microsoft.com/en-us/windows/win32/api/winevt/nc-winevt-evt_subscribe_callback.
+			err := syscall.Errno(uintptr(handle))
+			context.callback.PublishError(fmt.Errorf("Event log callback got error: %v", err))
 		} else {
 			context.callback.PublishEvent(EventHandle(handle), context.subscribedChannel)
 		}
