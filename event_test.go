@@ -28,7 +28,7 @@ type TimeCreatedXml struct {
 }
 
 type ExecutionXml struct {
-	ProcessId uint64 `xml:"ProcessID,attr`
+	ProcessId uint64 `xml:"ProcessID,attr"`
 }
 
 type SystemXml struct {
@@ -98,7 +98,17 @@ func TestXmlRenderMatchesOurs(t *T) {
 	}
 
 	logWatcher, err := NewWinLogWatcher()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer logWatcher.Shutdown()
+
+	logWatcher.RenderMessage = true
+	logWatcher.RenderLevel = true
+	logWatcher.RenderTask = true
+	logWatcher.RenderOpcode = true
+	logWatcher.RenderChannel = true
+
 	event, err := logWatcher.convertEvent(testEvent, SUBSCRIBED_CHANNEL)
 	if err != nil {
 		t.Fatal(err)
