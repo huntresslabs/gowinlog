@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"syscall"
 	"time"
 	"unsafe"
@@ -205,6 +206,9 @@ func (qr *QueryResult) Close() error {
 func (qr *QueryResult) Next(timeout time.Duration) (EventHandle, error) {
 	var record syscall.Handle
 	var recordsReturned uint32
+	if timeout < 0 || timeout > math.MaxUint32 {
+		return 0, errors.New("invalid timeout")
+	}
 	if err := EvtNext(qr.handle, 1, &record, uint32(timeout.Milliseconds()), 0, &recordsReturned); err != nil {
 		if errors.Is(err, windows.ERROR_NO_MORE_ITEMS) {
 			return 0, io.EOF
