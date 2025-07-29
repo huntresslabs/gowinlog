@@ -192,7 +192,14 @@ func QueryChannel(channel, query string) (*QueryResult, error) {
 }
 
 func (qr *QueryResult) Close() error {
-	return EvtClose(qr.handle)
+	if qr.handle == 0 {
+		return nil
+	}
+	if err := EvtClose(qr.handle); err != nil {
+		return err
+	}
+	qr.handle = 0
+	return nil
 }
 
 func (qr *QueryResult) Next(timeout time.Duration) (EventHandle, error) {
