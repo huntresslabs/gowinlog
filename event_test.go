@@ -108,6 +108,7 @@ func TestXmlRenderMatchesOurs(t *T) {
 	logWatcher.RenderTask = true
 	logWatcher.RenderOpcode = true
 	logWatcher.RenderChannel = true
+	logWatcher.RenderProvider = true
 
 	event, err := logWatcher.convertEvent(testEvent, SUBSCRIBED_CHANNEL)
 	if err != nil {
