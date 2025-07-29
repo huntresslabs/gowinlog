@@ -4,9 +4,14 @@
 package winlog
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"syscall"
+	"time"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 type evtCbFunction func(Action uint32, Context uintptr, handle syscall.Handle) uintptr
@@ -166,23 +171,39 @@ func CancelEventHandle(handle uint64) error {
 	return nil
 }
 
-/* Get the first event in the log, for testing */
-func getTestEventHandle() (EventHandle, error) {
-	wideQuery, _ := syscall.UTF16PtrFromString("*")
-	wideChannel, _ := syscall.UTF16PtrFromString("Application")
+type QueryResult struct {
+	handle syscall.Handle
+}
+
+func QueryChannel(channel, query string) (*QueryResult, error) {
+	wideChannel, err := syscall.UTF16PtrFromString(channel)
+	if err != nil {
+		return nil, err
+	}
+	wideQuery, err := syscall.UTF16PtrFromString(query)
+	if err != nil {
+		return nil, err
+	}
 	handle, err := EvtQuery(0, wideChannel, wideQuery, EvtQueryChannelPath)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
+	return &QueryResult{handle: handle}, nil
+}
 
+func (qr *QueryResult) Close() error {
+	return EvtClose(qr.handle)
+}
+
+func (qr *QueryResult) Next(timeout time.Duration) (EventHandle, error) {
 	var record syscall.Handle
 	var recordsReturned uint32
-	err = EvtNext(handle, 1, &record, 500, 0, &recordsReturned)
-	if err != nil {
-		EvtClose(handle)
-		return 0, nil
+	if err := EvtNext(qr.handle, 1, &record, uint32(timeout.Milliseconds()), 0, &recordsReturned); err != nil {
+		if errors.Is(err, windows.ERROR_NO_MORE_ITEMS) {
+			return 0, io.EOF
+		}
+		return 0, err
 	}
-	EvtClose(handle)
 	return EventHandle(record), nil
 }
 
