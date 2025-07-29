@@ -30,6 +30,9 @@ jobs:
     - name: Build gowinlog
       run:  go build -v -o artifacts/gowinlog.exe ./example/ 
       
+    - name: Run unit tests
+      run:  go test
+      
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
