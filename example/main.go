@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package main
@@ -6,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	winlog "github.com/ofcoursedude/gowinlog"
+	winlog "github.com/huntresslabs/gowinlog"
 )
 
 func main() {
