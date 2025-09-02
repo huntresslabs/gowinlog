@@ -185,3 +185,13 @@ func BenchmarkAPIDecode(b *B) {
 		}
 	}
 }
+
+/* Get the first event in the log, for testing */
+func getTestEventHandle() (EventHandle, error) {
+	result, err := QueryChannel("Application", "*")
+	if err != nil {
+		return 0, err
+	}
+	defer result.Close()
+	return result.Next(500 * time.Millisecond)
+}
